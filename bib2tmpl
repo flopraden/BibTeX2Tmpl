@@ -1,0 +1,184 @@
+#!/usr/bin/python3
+
+import sys
+
+import argparse
+
+import logging
+import logging.config
+
+import pprint
+
+import bibtexparser
+from bibtexparser.bparser import BibTexParser
+from bibtexparser.customization import *
+import re
+
+from jinja2 import Environment, FileSystemLoader
+
+import ast
+
+pp = pprint.PrettyPrinter(depth=6)
+logger = logging.getLogger(__name__)
+
+logging.config.dictConfig({
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s %(funcName)s:%(lineno)d: %(message)s'
+    },
+    },
+    'handlers': {
+        'default': {
+        'level':'DEBUG',
+            'formatter': 'standard',
+            'class':'logging.StreamHandler',
+        },
+},
+    'loggers': {
+        '': {
+            'handlers': ['default'],
+            'level': 'DEBUG',
+        'formatter': 'standard',
+            'propagate': True
+        }
+    }
+})
+
+#split files (JabRef Style)
+def get_files(record):
+    if "file" in record:
+        if record["file"]:
+            record["file"] = [ { 'descr': fl[0], 'path': fl[1], 'type': fl[2] } for fl in [ fl_str.split(':') for fl_str in record["file"].split(';') ] ]
+        else:
+            del record["file"]
+    return record
+
+def field2list(record, field, sep=',|;'):
+    """
+    Split field into a list.
+    """
+    if field in record:
+        record[field] = [i.strip() for i in re.split(sep, record[field].replace('\n', ''))]
+
+    return record
+
+def review(record):
+    if "review" in record:
+        if record["review"]:
+            reviews = []
+            for rv_str in record["review"].split(';'):
+                rv = rv_str.split(':')
+                if len(rv) == 1:
+                    reviews.append({ 'review': rv[0] })
+                elif len(rv) == 2:
+                    reviews.append({ 'reviewer': rv[0], 'review': rv[1] })
+                elif len(rv) == 3:
+                    reviews.append({ 'reviewer': rv[0], 'review': rv[1], 'date': rv[2] })
+            record["review"] = reviews
+        else:
+            del record["review"]
+    return record
+
+def build_crossref_url(cr):
+    return "#{}".format(cr);
+
+def crossref(record):
+    if "crossref" in record:
+        if record["crossref"]:
+            record["crossref"] = [ { 'id': cr, 'url': build_crossref_url(cr) }  for cr in record["crossref"].split(';') ]
+        else:
+            del record["crossref"]
+    return record
+
+
+# Let's define a function to customize our entries.
+# It takes a record and return this record.
+def customizations(record):
+    """Use some functions delivered by the library
+    
+    :param record: a record
+    :returns: -- customized record
+    """
+    record = convert_to_unicode(record)
+    record = type(record)
+    record = author(record)
+    record = editor(record)
+    record = journal(record)
+    record = keyword(record)
+    record = review(record)
+    # JabRef use keywords instead of keyword
+    record = field2list(record, "keywords")
+    record = crossref(record)
+    record = link(record)
+    record = page_double_hyphen(record)
+    record = doi(record)
+    record = get_files(record)
+    return record
+
+
+#if __name__ == '__main__':
+if True:
+    parser = argparse.ArgumentParser(description='Convert bibtex using template')
+    parser.add_argument('--template', default=["html5-all.html"], nargs='*', type=str, help='template files to generate')
+    parser.add_argument('--templates-dirs', default=["templates"], nargs='+', type=str, help='template base directories')
+    parser.add_argument('--output-dir', default="out", type=str, help='output directory')
+    parser.add_argument('--bibtex', type=str, default=[], nargs='*', help='input bibfiles')
+    parser.add_argument('--templates-args', default='{}', type=str, help='keywords args : should be a dict of values if one args for all template or list. If None is present, use the first dict in list')
+    
+    args = parser.parse_args()
+
+    parser = BibTexParser()
+    parser.customization = customizations
+
+    template_to_generate = args.template
+        
+    try:
+        temp_args = ast.literal_eval(args.templates_args)
+
+        if isinstance(temp_args, dict):
+            logger.info("found default template args")
+            tmpl_args = { 'default': temp_args }
+        elif isinstance(temp_args, list) and len(temp_args) > 0:
+            logger.info("found template args list")
+            tmpl_args = {}
+            for num in range(min(len(template_to_generate),len(temp_args))):
+                if num == 0:
+                    tmpl_args["default"] = temp_args[0]
+                    if tmpl_args["default"] is None or not isinstance(tmpl_args["default"],dict):
+                        logger.info("default template args is none or not a dict")
+                        logger.debug("Args = %s", tmpl_args["default"])
+                        tmpl_args["default"] = {}
+                if temp_args[num] is None or not isinstance(temp_args[num], dict):
+                    logger.info("template args is none or not a dict")
+                    logger.debug("Args = %s", temp_args[num])
+                else:
+                    tmpl_args[template_to_generate[num]] = temp_args[num]
+        else:
+            logger.error("Template args should be dict or non empty list : %s", temp_args)
+            tmpl_args = { 'default': {} }
+    
+        logger.debug("Parsed template args : %s", tmpl_args)
+    except ValueError as e:
+        logger.error('Bad value for template args : "%s"', e)
+        tmpl_args = { 'default': {} }
+
+        
+    bibs = {}
+    for bibfile in args.bibtex:
+        with open(bibfile) as bibtex_file:
+            bib_database = bibtexparser.load(bibtex_file, parser=parser)
+            logger.debug("Loading file '%s' : '%s'", bibfile, bib_database.entries_dict)
+            bibs.update(bib_database.entries_dict)
+
+    logger.debug("============ Bibentries ===========\n%s\n========== end Bibentries =========\n", pp.pformat(bibs))
+    env = Environment(loader=FileSystemLoader(args.templates_dirs, followlinks=True))
+
+    for tmpl in template_to_generate:
+        try:
+            template = env.get_template(tmpl)
+        except jinja2.exceptions.TemplateNotFound as e:
+            logger.error("Template not found in any directories : '%s'", e)
+        print(template.render(bibentries=bibs, **tmpl_args.get(tmpl,tmpl_args['default'])))
+        

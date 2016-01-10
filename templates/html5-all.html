@@ -1,0 +1,107 @@
+<div class="bibentries">
+  <ul>
+    {% for bibkey, bibentrie in bibentries.items() %}
+    <li><div class="bibtentrie" id="{{bibkey}}">
+	<img class="bibiconslang" src="img/bib/lang-{{ bibentrie["language"] }}-icon.png" alt="icon for then language of the paper : {{ bibentrie["language"] }}">
+	<div class="bibtitle"><h4>{%- if 'url' in bibentrie -%}<a href='{{ bibentrie['url'] }}' target='_blank'> {% endif %}{{ bibentrie['title'] }}{%- if 'url' in bibentrie -%}</a>{% endif %}</h4></div>
+	<div class="authors">
+	  {% for author in bibentrie['author'] -%}
+	  <div class="author">
+	    {{ author }}
+	  </div>
+	  {%- endfor %}
+	</div>
+	<div class="bibaffiliation">{{ bibentrie['affiliation'] }} </div>
+	<div class="bibpubdate">
+	  <span class="bibyear">{{ bibentrie['year'] }} <span class="bibmonth"> {{ bibentrie['month'] }} </span> </span>
+	</div>
+	{%- if 'journal' in bibentrie -%}
+	<div class="bibjournal">{{ bibentrie['journal']['name'] }}
+	  <div class="bibjournalID">{{ bibentrie['journal']['ID'] }}</div>
+	</div>
+	{% endif %}
+	<div class="bibinpub">
+	  <span class="bibnumber">{{ bibentrie['number'] }} <span class="bibvolume"> {{ bibentrie['volume'] }} <span class="bibpages"> {{ bibentrie['pages'] }} </span> </span> </span>
+	</div>
+	<div class="bibinstlink">
+	  <div class="bibdoi">{{ bibentrie['doi'] }}</div>
+	  <div class="bibhalid">{{ bibentrie['hal_id'] }}</div>
+	</div>
+	<div class="bibkeywords">
+	  {% for keyword in bibentrie['keywords'] -%}
+	  <div class="bibkeyword">
+	    {{ keyword }}
+	  </div>
+	  {%- endfor %}
+	  {% for keyword in bibentrie['keyword'] -%}
+	  <div class="bibkeyword">
+	    {{ keyword }}
+	  </div>
+	  {%- endfor %}
+	</div>
+	<div class="bibcrossrefs">
+	  {% for crossref in bibentrie['crossref'] -%}
+	  <div class="bibcrossref">
+	    <a href="{{ crossref["url"] }}">{{ crossref["id"] }}</a>
+	  </div>
+	  {%- endfor %}
+	</div>
+	
+	<div class="bibfiles">
+	  {% for file in bibentrie['file'] -%}
+	  <div class="bibfile">
+	    <a href="bibtex-files/{{ file["path"] }}" target="_blank">
+	      <img class="bibicons" src="img/bib/icon-{{ file["type"] }}" alt="[{{ file["type"] }} icon]">
+	      {{ file['desc'] }}
+	    </a>
+	  </div>
+	  {%- endfor %}
+	</div>
+	<div class="bibextra">
+	  <div class="bibaudience">{{ bibentrie['audience'] }}</div>
+	  <div class="bibabstract">
+	    <quote>
+	      {{ bibentrie['abstract'] }}
+	    </quote>
+	  </div>
+	  <div class="bibcomment">
+	    <quote>
+	      {{ bibentrie['comment'] }}
+	    </quote>
+	  </div>
+	  <div class="bibnote">
+	    <quote>
+	      {{ bibentrie['note'] }}
+	    </quote>
+	  </div>
+	  <div class="bibreviews">
+	    {% for review in bibentrie['review'] -%}
+	    <div class="bibreview">
+	      <div class="bibreviewer">{{ review['reviewer'] }}</div><div class="bibreviewdate">{{ review['date'] }}</div>
+	      <quote>
+		{{ review['review'] }}
+	      </quote>
+	    </div>
+	    {%- endfor %}
+	  </div>
+	  <div class="biblinks">
+	    {% for link in bibentrie['link'] -%}
+	    <div class="biblink">
+	      <a href="{{ link["url"] }}" target="_blank">
+		{{ link['anchor'] }}
+	      </a>
+	    </div>
+	    {%- endfor %}
+	  </div>
+
+	  <code class="bibraw">{{ bibentrie['RAW'] }}</code>
+	</div>
+	<div class="bibowner">{{ bibentrie['owner'] }}
+	  <div class="bibtimestamps">{{ bibentrie['timestamp'] }}</div>
+	</div>
+
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
