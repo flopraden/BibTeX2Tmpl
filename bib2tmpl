@@ -2,6 +2,8 @@
 
 import sys
 
+sys.path.append("./lib/bibtexparser")
+
 import argparse
 
 import logging

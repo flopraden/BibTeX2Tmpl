@@ -1,0 +1,3 @@
+[submodule "lib/bibtexparser"]
+	path = lib/bibtexparser
+	url = https://github.com/flopraden/python-bibtexparser.git
